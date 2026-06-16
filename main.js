@@ -11,7 +11,7 @@ const fs          = require('fs');
 const path        = require('path');
 const { WebSocketServer } = require('ws');
 const { SerialPort }      = require('serialport');
-const { MAVLinkParser, buildSetMessageInterval, buildRequestDataStream, buildParamSet, buildParamRequestRead, MSG_GPS_RAW_INT, MSG_GPS2_RAW } = require('./mavlink.js');
+const { MAVLinkParser, buildSetMessageInterval, buildRequestDataStream, buildParamSet, buildParamRequestRead, MSG_GPS_RAW_INT, MSG_GPS2_RAW, MSG_SYS_STATUS, MSG_SCALED_PRESSURE } = require('./mavlink.js');
 
 const PORT        = 3000;
 const PUBLIC_DIR  = path.join(__dirname, 'public');
@@ -172,6 +172,30 @@ function requestAttitude(port, px, sysId) {
     log(`${px.toUpperCase()} GPS2 interval build error: ${e.message}`);
   }
 
+  // SYS_STATUS (msg 1) at 1 Hz — voltage, current, battery %
+  try {
+    const frame = buildSetMessageInterval(
+      nextSeq(px), 255, 190, targetSys, targetComp, MSG_SYS_STATUS, 1000000
+    );
+    port.write(frame, err => {
+      if (err) log(`${px.toUpperCase()} SYS_STATUS interval write error: ${err.message}`);
+    });
+  } catch (e) {
+    log(`${px.toUpperCase()} SYS_STATUS interval build error: ${e.message}`);
+  }
+
+  // SCALED_PRESSURE (msg 29) at 2 Hz — baro pressure + temperature
+  try {
+    const frame = buildSetMessageInterval(
+      nextSeq(px), 255, 190, targetSys, targetComp, MSG_SCALED_PRESSURE, 500000
+    );
+    port.write(frame, err => {
+      if (err) log(`${px.toUpperCase()} SCALED_PRESSURE interval write error: ${err.message}`);
+    });
+  } catch (e) {
+    log(`${px.toUpperCase()} SCALED_PRESSURE interval build error: ${e.message}`);
+  }
+
   // Fallback: REQUEST_DATA_STREAM EXTRA1 (stream 10) at STREAM_HZ for attitude
   try {
     const frame = buildRequestDataStream(
@@ -320,6 +344,10 @@ async function startSession(port1Path, port2Path, baudRate, windowMs) {
     } else if (msg.msgId === 124 && px === 'px1') {
       // GPS2_RAW: secondary GPS port on PX1 only
       broadcast({ type: 'gps', slot: 'gps2', fixType: msg.fixType, sats: msg.sats });
+    } else if (msg.msgId === MSG_SYS_STATUS) {
+      broadcast({ type: 'power', px, voltV: msg.voltV, currA: msg.currA, battPct: msg.battPct });
+    } else if (msg.msgId === MSG_SCALED_PRESSURE) {
+      broadcast({ type: 'baro', px, pressHpa: msg.pressHpa, tempC: msg.tempC });
     } else if (msg.msgId === 22) {
       // PARAM_VALUE — check if a pending triggerVerify is waiting for this param
       if (msg.paramId === 'STEST_ENABLE' && pendingVerifies[px]) {

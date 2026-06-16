@@ -484,6 +484,16 @@ const gpsPx2     = document.getElementById('gps-px2');
 const gpsSatsPx1 = document.getElementById('gps-sats-px1');
 const gpsSatsPx2 = document.getElementById('gps-sats-px2');
 
+const powerVolt        = { px1: document.getElementById('power-volt-px1'), px2: document.getElementById('power-volt-px2') };
+const powerCurr        = { px1: document.getElementById('power-curr-px1'), px2: document.getElementById('power-curr-px2') };
+const powerBatt        = { px1: document.getElementById('power-batt-px1'), px2: document.getElementById('power-batt-px2') };
+const powerCheckResult = document.getElementById('power-check-result');
+
+const baroPress  = { px1: document.getElementById('baro-press-px1'), px2: document.getElementById('baro-press-px2') };
+const baroTemp   = { px1: document.getElementById('baro-temp-px1'),  px2: document.getElementById('baro-temp-px2') };
+
+const latestPower = { px1: null, px2: null };
+
 // GPS no-data timers — if a slot doesn't report within 5 s of PX1 streaming,
 // mark it "No device" so the user knows that port has nothing connected.
 const gpsTimers = { gps1: null, gps2: null };
@@ -761,6 +771,26 @@ function handleServerMessage(msg) {
       );
       badgeEl.textContent = label;
       satsEl.textContent  = msg.sats != null ? `${msg.sats} sats` : '— sats';
+      break;
+    }
+
+    case 'power': {
+      const px = msg.px;
+      latestPower[px] = msg;
+      if (powerVolt[px]) powerVolt[px].textContent = msg.voltV != null ? msg.voltV.toFixed(2) + ' V' : '— V';
+      if (powerCurr[px]) powerCurr[px].textContent = msg.currA != null ? msg.currA.toFixed(2) + ' A' : '— A';
+      if (powerBatt[px]) powerBatt[px].textContent = msg.battPct != null ? msg.battPct + '%' : '—%';
+      if (powerVolt[px]) {
+        const v = msg.voltV || 0;
+        powerVolt[px].style.color = v > 10 ? '#3fb950' : v > 5 ? '#d29922' : '#8b949e';
+      }
+      break;
+    }
+
+    case 'baro': {
+      const px = msg.px;
+      if (baroPress[px]) baroPress[px].textContent = msg.pressHpa != null ? msg.pressHpa.toFixed(1) + ' hPa' : '— hPa';
+      if (baroTemp[px])  baroTemp[px].textContent  = msg.tempC   != null ? msg.tempC.toFixed(1)   + '°C'    : '—°C';
       break;
     }
 
@@ -1160,6 +1190,29 @@ btnStop.addEventListener('click', () => {
 
 btnClearLog.addEventListener('click', () => {
   logArea.innerHTML = '';
+});
+
+document.getElementById('btn-check-power').addEventListener('click', () => {
+  const p1 = latestPower.px1;
+  const p2 = latestPower.px2;
+
+  if (!p1 && !p2) {
+    powerCheckResult.style.display = 'block';
+    powerCheckResult.style.color = '#8b949e';
+    powerCheckResult.textContent = 'No data — start streaming first';
+    return;
+  }
+
+  const ts   = new Date().toTimeString().slice(0, 8);
+  const fmt  = (p) => p ? `${p.voltV.toFixed(2)} V / ${p.currA.toFixed(2)} A` : 'no data';
+  const ok1  = p1 && p1.voltV > 1;
+  const ok2  = p2 && p2.voltV > 1;
+  const allOk = (p1 ? ok1 : true) && (p2 ? ok2 : true);
+
+  powerCheckResult.style.display = 'block';
+  powerCheckResult.style.color = allOk ? '#3fb950' : '#f85149';
+  powerCheckResult.textContent = `Checked ${ts} — PX1: ${fmt(p1)}  |  PX2: ${fmt(p2)}`;
+  appendLog(`[POWER] ${powerCheckResult.textContent}`);
 });
 
 // Orientation correction dropdowns

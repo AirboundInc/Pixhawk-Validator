@@ -602,6 +602,18 @@ canvas {
   max-height: 90px;
 }
 
+/* ---- Power check result ---- */
+.power-check-result {
+  margin-top: 6px;
+  font-size: 0.78em;
+  font-family: monospace;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  word-break: break-all;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .viewer-row  { flex-direction: column; }
