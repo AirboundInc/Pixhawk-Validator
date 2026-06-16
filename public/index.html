@@ -163,6 +163,43 @@
       </div>
     </section>
 
+    <!-- Power -->
+    <section class="card">
+      <h3>Power <button id="btn-check-power" class="btn btn-tiny btn-secondary">CHECK</button></h3>
+      <div class="status-grid">
+        <div class="status-row">
+          <span class="status-label">PX1</span>
+          <span id="power-volt-px1" class="rate-badge">— V</span>
+          <span id="power-curr-px1" class="rate-badge">— A</span>
+          <span id="power-batt-px1" class="rate-badge">—%</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">PX2</span>
+          <span id="power-volt-px2" class="rate-badge">— V</span>
+          <span id="power-curr-px2" class="rate-badge">— A</span>
+          <span id="power-batt-px2" class="rate-badge">—%</span>
+        </div>
+      </div>
+      <div id="power-check-result" class="power-check-result" style="display:none"></div>
+    </section>
+
+    <!-- Baro -->
+    <section class="card">
+      <h3>Barometer</h3>
+      <div class="status-grid">
+        <div class="status-row">
+          <span class="status-label">PX1</span>
+          <span id="baro-press-px1" class="rate-badge">— hPa</span>
+          <span id="baro-temp-px1"  class="rate-badge">—°C</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">PX2</span>
+          <span id="baro-press-px2" class="rate-badge">— hPa</span>
+          <span id="baro-temp-px2"  class="rate-badge">—°C</span>
+        </div>
+      </div>
+    </section>
+
     <!-- Metrics -->
     <section class="card">
       <h3>Metrics</h3>

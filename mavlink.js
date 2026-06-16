@@ -13,6 +13,8 @@ const MSG_ATTITUDE              = 30;
 const MSG_ATTITUDE_QUATERNION   = 31;
 const MSG_GPS_RAW_INT           = 24;
 const MSG_GPS2_RAW              = 124;
+const MSG_SYS_STATUS            = 1;
+const MSG_SCALED_PRESSURE       = 29;
 const MSG_COMMAND_LONG          = 76;
 const MSG_REQUEST_DATA_STREAM   = 66;
 const MSG_STATUSTEXT            = 253;
@@ -22,6 +24,8 @@ const MSG_PARAM_VALUE           = 22;
 
 // CRC extra bytes for MAVLink 1 CRC_EXTRA
 const CRC_EXTRA = {
+  [MSG_SYS_STATUS]:          124,
+  [MSG_SCALED_PRESSURE]:     115,
   [MSG_ATTITUDE]:            39,
   [MSG_ATTITUDE_QUATERNION]: 246,
   [MSG_GPS_RAW_INT]:         24,
@@ -270,6 +274,31 @@ class MAVLinkParser {
         const source  = msgId === MSG_GPS_RAW_INT ? 'GPS_RAW_INT' : 'GPS2_RAW';
         this._cb({ msgId, sysId, compId, seq, fixType, sats, source });
 
+      } else if (msgId === MSG_SYS_STATUS && payload.length >= 19) {
+        // Wire layout (sorted by type): sensors_present(u32,0) sensors_enabled(u32,4) sensors_health(u32,8)
+        // load(u16,12) voltage_battery(u16,14) current_battery(i16,16) battery_remaining(i8,18)
+        const voltMv  = payload.readUInt16LE(14);
+        const currCa  = payload.readInt16LE(16);   // centamps (10mA units)
+        const battPct = payload.readInt8(18);       // -1 = unknown
+        this._cb({
+          msgId, sysId, compId, seq,
+          voltV:   voltMv / 1000,
+          currA:   currCa / 100,
+          battPct: battPct < 0 ? null : battPct,
+          source:  'SYS_STATUS',
+        });
+
+      } else if (msgId === MSG_SCALED_PRESSURE && payload.length >= 14) {
+        // Wire layout: time_boot_ms(u32,0) press_abs(f32,4) press_diff(f32,8) temperature(i16,12)
+        const pressHpa = payload.readFloatLE(4);
+        const tempCdeg = payload.readInt16LE(12);  // centidegrees
+        this._cb({
+          msgId, sysId, compId, seq,
+          pressHpa,
+          tempC: tempCdeg / 100,
+          source: 'SCALED_PRESSURE',
+        });
+
       } else if (msgId === MSG_PARAM_VALUE && payload.length >= 25) {
         // Wire layout: param_value(float,0) param_count(u16,4) param_index(u16,6) param_id(char[16],8) param_type(u8,24)
         const value = payload.readFloatLE(0);
@@ -376,6 +405,8 @@ module.exports = {
   MSG_ATTITUDE_QUATERNION,
   MSG_GPS_RAW_INT,
   MSG_GPS2_RAW,
+  MSG_SYS_STATUS,
+  MSG_SCALED_PRESSURE,
   MSG_STATUSTEXT,
   MSG_PARAM_VALUE,
 };
